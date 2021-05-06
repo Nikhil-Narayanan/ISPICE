@@ -6,7 +6,7 @@ class component():
         self.node0 = node0
         self.node1 = node1
         self.value = value
-        if not(node2 == None):
+        if(not(node2 == None)):
             self.node2 = node2
 
 def ac_analysis():
@@ -17,23 +17,22 @@ def terminate():
 
 def component_parser(line):
     designator = line[0]
-    #designator is the first letter of the first word
     node0 = line[1]
     node1 = line[2]
     value = line[-1]
-    if len(line)==5:
+    if(len(line)==5):
         node2 = line[3]
     return component(designator, node0 , node1, node2, value)
 
 def simulation_parser(line):
-    if line[0] == '.ac':
+    if(line[0] == '.ac'):
         return ac_analysis()
-    if line[0] == '.end':
+    if(line[0] == '.end'):
         return terminate()
 
 def interpreter(line):
     line = line.split()
-    if line[0][0]=='.':
+    if(line[0][0]=='.'):
         return simulation_parser(line)
     else:
         return component_parser(line)
@@ -49,6 +48,6 @@ while True:
 
     # if line is empty
     # end of file is reached
-    if not line:
+    if (not(line)):
         break
     interpreter(line)
