@@ -19,9 +19,16 @@ class diode:
         self.cathode = cathode
         self.model = model
 
+class mosfet:
+    def __init__(self, source, gate, drain, model):
+        self.source = source
+        self.gate = gate
+        self.drain = drain
+        self.model = model
+
 class bjt:
     def __init__(self, collector, base, emitter, model):
-        self.collector = collector
+        self.collector = source
         self.base = base
         self.emitter = emitter
         self.model = model
@@ -38,5 +45,10 @@ class cap:
     def __init__(self, value):
         self.value = value
 
-
+class vccs:
+    def __init__(self, plus, minus, ctrlp, ctrlm, transc):
+        self.collector = source
+        self.base = base
+        self.emitter = emitter
+        self.model = model
 #Make a data structure with the information of all the small signal parameters
