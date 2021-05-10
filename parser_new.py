@@ -37,6 +37,60 @@ def parser(file):
                     voltage = multiplier(line[3])
                     dc_voltage(plus_node, minus_node, voltage)
             elif designator == 'I':
+                in_node = line[1]
+                out_node = line[2]
+                if line[3][0] == 'A':
+                    AC = line[3]
+                    AC = AC[3:-1].split()
+                    amplitude = multiplier(AC[0])
+                    phase = multiplier(AC[1])
+                    ac_current(in_node, out_node, amplitude, phase)
+                else:
+                    current = multiplier(line[3])
+                    dc_current(in_node, out_node, current)
+            elif designator == 'R':
+                node_1 = line[1]
+                node_2 = line[2]
+                resistance = multiplier(line[3])
+                resistor(node_1, node_2, resistance)
+            elif designator == 'C':
+                node_1 = line[1]
+                node_2 = line[2]
+                capacitance = multiplier(line[3])
+                capacitor(node_1, node_2, capacitance)
+            elif designator == 'L':
+                node_1 = line[1]
+                node_2 = line[2]
+                inductance = multiplier(line[3])
+                inductor(node_1, node_2, inductance)
+            elif designator == 'D':
+                anode = line[1]
+                cathode = line[2]
+                if line[3] == 'D':
+                    si_diode(node_1, node_2)
+            elif designator == 'Q':
+                collector = line[1]
+                base = line[2]
+                emitter = line[3]
+                if line[4] == 'NPN':
+                    NPN(collector, base, emitter)
+                elif line[4] == 'PNP':
+                    PNP(collector, base, emitter)
+            elif designator == 'M':
+                drain = line[1]
+                gate = line[2]
+                source = line[3]
+                if line[4] == 'NMOS':
+                    NMOS(drain, gate, source)
+                elif line[4] == 'PMOS':
+                    PMOS(drain, gate, source)
+            elif designator == 'G':
+                plus = line[1]
+                minus = line[2]
+                control_plus = line[3]
+                control_minus = line[4]
+                transconductance = multiplier(line[5])
+                VCCS(plus, minus, control_minus, control_plus, transconductance)
 
 def terminate():
     return
@@ -48,6 +102,39 @@ def ac_voltage(plus_node, minus_node, amplitude, phase):
     return
 
 def dc_voltage(plus_node, minus_node, voltage):
+    return
+
+def ac_current(in_node, out_node, amplitude, phase):
+    return
+
+def dc_current(in_node, out_node, current):
+    return
+
+def resistor(in_node, out_node, resistance):
+    return
+
+def capacitor(node_1, node_2, capacitance):
+    return
+
+def inductor(node_1, node_2, inductance):
+    return
+
+def si_diode(node_1, node2):
+    return
+
+def NPN(collector, base, emitter):
+    return
+
+def PNP(collector, base, emitter):
+    return
+
+def NMOS(drain, gate, source):
+    return
+
+def PMOS(drain, gate, source):
+    return
+
+def VCCS(plus, minus, control_minus, control_plus, transconductance):
     return
 
 def multiplier(value):
