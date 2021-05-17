@@ -67,7 +67,7 @@ def parser(file):
                 anode = line[1]
                 cathode = line[2]
                 if line[3] == 'D':
-                    si_diode(node_1, node_2)
+                    si_diode(anode, cathode)
             elif designator == 'Q':
                 collector = line[1]
                 base = line[2]
@@ -119,7 +119,7 @@ def capacitor(node_1, node_2, capacitance):
 def inductor(node_1, node_2, inductance):
     return
 
-def si_diode(node_1, node2):
+def si_diode(anode, cathode):
     return
 
 def NPN(collector, base, emitter):

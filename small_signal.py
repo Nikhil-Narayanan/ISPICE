@@ -52,3 +52,28 @@ class vccs:
         self.emitter = emitter
         self.model = model
 #Make a data structure with the information of all the small signal parameters
+
+class Graph:
+    def __init__(self, V):
+        self.V = V
+        self.adj = [[] for i in range(V)]
+
+    # add edge to graph
+    def addEdge(self, u, v):
+        self.adj[u].append(v)
+        self.adj[v].append(u)
+
+    # Returns count of edge in undirected graph
+    def countEdges(self):
+        Sum = 0
+
+        # traverse all vertex
+        for i in range(self.V):
+            # add all edge that are linked
+            # to the current vertex
+            Sum += len(self.adj[i])
+
+            # The count of edge is always even
+        # because in undirected graph every edge
+        # is connected twice between two vertices
+        return Sum // 2
