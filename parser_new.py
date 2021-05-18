@@ -117,18 +117,18 @@ def ac_current(in_node, out_node, amplitude, phase):
     return
 
 def dc_current(in_node, out_node, current):
-    components.push([minus_node, plus_node, None, current, None])
+    components.push([in_node, out_node, None, current, None])
     return
 
 def resistor(in_node, out_node, resistance):
-    components.push([minus_node, plus_node, None, None, 1/resistance])
+    components.push([in_node, out_node, None, None, 1/resistance])
     return
 
-def capacitor(node_1, node_2, capacitance):
+def capacitor(node_1, node_2, capacitance, frequency = frequency):
     conductance = j*frequency*capacitance
     components.push([node_1, node_2, None, None, conductance])
 
-def inductor(node_1, node_2, inductance):
+def inductor(node_1, node_2, inductance, frequency = frequency):
     conductance = 1/(j*frequency*inductance)
     components.push([node_1, node_2, None, None, conductance])
 
@@ -145,13 +145,17 @@ def NPN(collector, base, emitter):
     dc_current(collector, emitter, collector_current * beta)
 
 def PNP(collector, base, emitter):
-    beta =
+    beta = 200
     base_current = si_diode(emitter, base)
     dc_current(emitter, collector, base_current * beta)
 
-def NMOS(drain, gate, source):
+nm_counter = 0
+
+def NMOS(drain, gate, source, nm_counter=nm_counter):
     #assuming enhancement mode
-    node_nm1
+    #http://www.ece.mcgill.ca/~grober4/SPICE/SPICE_Decks/1st_Edition_LTSPICE/chapter5/Chapter%205%20MOSFETs%20web%20version.html
+    VCCS(source, drain, source, gate, )
+
 
 def PMOS(drain, gate, source):
     v_t = -2
@@ -159,7 +163,8 @@ def PMOS(drain, gate, source):
     i_d = k * (v_gs - v_t) ^ 2
 
 def VCCS(plus, minus, control_minus, control_plus, transconductance):
-    return
+    current = (control_plus - control_minus) * transconductance
+    dc_current(minus, plus, current)
 
 def multiplier(value):
     #parses the value into a floating point number assuming it's not AC or an active component
@@ -177,7 +182,7 @@ def multiplier(value):
     elif value[-1] == 'k':
         return float(value[:-1])*float(10**3)
     elif value[-1] == 'G':
-        return float(value[:-1])*float(10**9
+        return float(value[:-1])*float(10**9)
     else:
         #no multiplier
         return float(value)
