@@ -1,4 +1,11 @@
 import random
+import cmath
+import math
+
+components = []
+#each element of the list is a list of form [start node, end node, voltage, current, conductance]
+
+frequency
 
 def parser(file):
     while True:
@@ -9,7 +16,7 @@ def parser(file):
         line = line.split() #split line up into a list of individual words
         #We can determine the time of line by looking at the first word
         if line[0] == '*':
-            #This is a comment in the netlist, so we just move on to the next line
+        #This is a comment in the netlist, so we just move on to the next line
         elif line[0] == '.end':
             #This signifies the end of the simulation file
             terminate()
@@ -96,43 +103,62 @@ def terminate():
     return
 
 def ac_sim(points_per_dec, start_freq, stop_freq):
+#takes you to another thread
     return
 
 def ac_voltage(plus_node, minus_node, amplitude, phase):
     return
 
 def dc_voltage(plus_node, minus_node, voltage):
+    components.push([minus_node, plus_node, voltage, None, None])
     return
 
 def ac_current(in_node, out_node, amplitude, phase):
     return
 
 def dc_current(in_node, out_node, current):
+    components.push([minus_node, plus_node, None, current, None])
     return
 
 def resistor(in_node, out_node, resistance):
+    components.push([minus_node, plus_node, None, None, 1/resistance])
     return
 
 def capacitor(node_1, node_2, capacitance):
-    return
+    conductance = j*frequency*capacitance
+    components.push([node_1, node_2, None, None, conductance])
 
 def inductor(node_1, node_2, inductance):
-    return
+    conductance = 1/(j*frequency*inductance)
+    components.push([node_1, node_2, None, None, conductance])
 
 def si_diode(anode, cathode):
-    return
+    i_sat = 0.0075
+    v_d = 0.7
+    current = i_sat * (math.exp(v_d/0.026)-1)
+    components.push([anode, cathode, v_d, current, None])
+    return current
 
 def NPN(collector, base, emitter):
-    return
+    beta = 200
+    collector_current = si_diode(base, emitter)
+    dc_current(collector, emitter, collector_current * beta)
 
 def PNP(collector, base, emitter):
-    return
+    beta =
+    base_current = si_diode(emitter, base)
+    dc_current(emitter, collector, base_current * beta)
 
 def NMOS(drain, gate, source):
-    return
+    #assuming enhancement mode
+    v_t = 2
+    k = 0.0005
+    i_d = k * (v_gs - v_t)^2
 
 def PMOS(drain, gate, source):
-    return
+    v_t = -2
+    k = 0.0005
+    i_d = k * (v_gs - v_t) ^ 2
 
 def VCCS(plus, minus, control_minus, control_plus, transconductance):
     return

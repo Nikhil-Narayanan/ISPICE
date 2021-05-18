@@ -28,7 +28,7 @@ class mosfet:
 
 class bjt:
     def __init__(self, collector, base, emitter, model):
-        self.collector = source
+        self.collector = collector
         self.base = base
         self.emitter = emitter
         self.model = model
@@ -47,10 +47,11 @@ class cap:
 
 class vccs:
     def __init__(self, plus, minus, ctrlp, ctrlm, transc):
-        self.collector = source
-        self.base = base
-        self.emitter = emitter
-        self.model = model
+        self.plus = plus
+        self.minus = minus
+        self.ctrlp = ctrlp
+        self.ctrlm = ctrlm
+        self.transc = transc
 #Make a data structure with the information of all the small signal parameters
 
 class Graph:
