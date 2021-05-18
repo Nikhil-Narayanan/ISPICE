@@ -151,9 +151,7 @@ def PNP(collector, base, emitter):
 
 def NMOS(drain, gate, source):
     #assuming enhancement mode
-    v_t = 2
-    k = 0.0005
-    i_d = k * (v_gs - v_t)^2
+    node_nm1
 
 def PMOS(drain, gate, source):
     v_t = -2
@@ -179,7 +177,7 @@ def multiplier(value):
     elif value[-1] == 'k':
         return float(value[:-1])*float(10**3)
     elif value[-1] == 'G':
-        return float(value[:-1])*float(10**9)
+        return float(value[:-1])*float(10**9
     else:
         #no multiplier
         return float(value)
