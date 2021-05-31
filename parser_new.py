@@ -3,9 +3,36 @@ import cmath
 import math
 
 components = []
+voltage sources
 #each element of the list is a list of form [start node, end node, voltage, current, conductance]
 
+#make an array for every node N001, push all connected to N001, (V-V2)*conductance=(V-V1)*conductance
+#Get conductance matrix while doing the above and solve with inverse
+#Voltage mat * conductance mat = current
+#solve for the voltage array
+#voltage mat = inverse of conductance mat * current
+
 frequency
+
+def nodal_analysis(components):
+    nodes = []
+    node_components = []
+    for component in components:
+        if not(component[0] in nodes):
+            nodes.append(component[0])
+    for component in components:
+        for node in nodes:
+            for other_node in nodes:
+                if not(node == other_node):
+                    if component[0] == node and component[1]==other_node:
+                        #blah
+                        voltage = component[2]
+                        current =  component[3]
+                        conductance = component[4]
+
+                    elif component[0] == other_node and component[1] == node:
+                        #blah
+
 
 def parser(file):
     while True:
@@ -111,25 +138,48 @@ def ac_voltage(plus_node, minus_node, amplitude, phase):
 
 def dc_voltage(plus_node, minus_node, voltage):
     components.push([minus_node, plus_node, voltage, None, None])
-    return
+    # right side:
+    # += voltage
+    # left side:
+    #  for plus node row
+    #   column of plus node = 1, column of minus node = -1, rest of columns = 0
+    #  for minus node row
+    #   0 for column of plus node
 
 def ac_current(in_node, out_node, amplitude, phase):
     return
 
 def dc_current(in_node, out_node, current):
-    components.push([in_node, out_node, None, current, None])
-    return
+    #for in_node:
+    #right side
+    # -= current`
+    #for out_node:
+    #right side
+    # += current
 
 def resistor(in_node, out_node, resistance):
     components.push([in_node, out_node, None, None, 1/resistance])
+    #for in_node:
+    #   column of out_node -= 1/resistance
+    #for out_node:
+    #   column of in_node -= 1/resistance
+
     return
 
 def capacitor(node_1, node_2, capacitance, frequency = frequency):
     conductance = j*frequency*capacitance
+    #for in_node:
+    #   columns of out_node -= conductance
+    #for out_node
+    #   columns of in_node -= conductance
     components.push([node_1, node_2, None, None, conductance])
 
 def inductor(node_1, node_2, inductance, frequency = frequency):
     conductance = 1/(j*frequency*inductance)
+    # for in_node:
+    #   columns of out_node -= conductance
+    # for out_node
+    #   columns of in_node -= conductance
     components.push([node_1, node_2, None, None, conductance])
 
 def si_diode(anode, cathode):
@@ -151,16 +201,22 @@ def PNP(collector, base, emitter):
 
 nm_counter = 0
 
+#Remove the FET, find thevenin equivalent, find voltage and current going into MOSFETS and then work out other parameters for the MOSFET
+
+
 def NMOS(drain, gate, source, nm_counter=nm_counter):
     #assuming enhancement mode
     #http://www.ece.mcgill.ca/~grober4/SPICE/SPICE_Decks/1st_Edition_LTSPICE/chapter5/Chapter%205%20MOSFETs%20web%20version.html
     VCCS(source, drain, source, gate, )
+            #enhancement and and saturation mode
+            #make function to decide operating mode of the MOSFET
 
 
 def PMOS(drain, gate, source):
     v_t = -2
     k = 0.0005
     i_d = k * (v_gs - v_t) ^ 2
+
 
 def VCCS(plus, minus, control_minus, control_plus, transconductance):
     current = (control_plus - control_minus) * transconductance
