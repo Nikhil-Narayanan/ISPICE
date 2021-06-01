@@ -12,7 +12,33 @@ voltage sources
 #solve for the voltage array
 #voltage mat = inverse of conductance mat * current
 
-frequency
+#making the easy matrix eqn (dc sources resistor)
+#deal with multiple sources
+    #finish todayish
+#handling complex numbers
+
+#handling non-linear components
+    #first step is to write functions to change them into small signal equivalents, lots of iterative loops/numerical methods
+#doing ac sweep
+    #convert all the dc components to short or open circuit
+#DC operating point
+    #convert all the ac components to short or open circuit
+def matrix_maker(row):
+    currents = []
+    x = []
+    nodes = []
+
+class circuit_matrix:
+    def __init__(self):
+        nodes = []
+        currents = []
+    def node_check(self, node):
+        if not(node in self.nodes):
+            self.nodes.append(node)
+    def dc_current(self, in_node, out_node, current):
+        self.node_check(in_node)
+        self.node_check(out_node)
+#frequency
 
 def nodal_analysis(components):
     nodes = []
@@ -129,11 +155,17 @@ def parser(file):
 def terminate():
     return
 
+for each node make a list of components
+
 def ac_sim(points_per_dec, start_freq, stop_freq):
 #takes you to another thread
     return
 
 def ac_voltage(plus_node, minus_node, amplitude, phase):
+    #polar form, for matrix solving function,
+    #for ac, or cartesian form
+    #input to solve function, should be able to handle complex numbers
+    #make function to handle complex numbers for the solve function
     return
 
 def dc_voltage(plus_node, minus_node, voltage):
@@ -187,6 +219,7 @@ def si_diode(anode, cathode):
     v_d = 0.7
     current = i_sat * (math.exp(v_d/0.026)-1)
     components.push([anode, cathode, v_d, current, None])
+    #iteratively calculate v_d, assume a value and converge to actual value of v_d
     return current
 
 def NPN(collector, base, emitter):
