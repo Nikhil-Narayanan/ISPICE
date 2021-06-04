@@ -1,5 +1,6 @@
 import cmath
 import math
+from numpy.linalg import inv
 import numpy as np
 
 file = open("netlist.txt", "r")
@@ -32,7 +33,7 @@ class currentSource:
         self.in_node = in_node
         self.out_node = out_node
 
-class Resistor:
+class Resistors:
     def __init__(self, label, conductance, node_1, node_2):
         self.label = label
         self.conductance = conductance
@@ -57,8 +58,8 @@ def parser(file):
             pass
         elif line[0] == '.end':
             #This signifies the end of the simulation file
-            (nodes, netlistMatrix) = formNetlistMatrix(currentSources, conductanceElements)
-            solveMatrix(netlistMatrix, nodes)
+            nodes, NetlistMatrix = formNetlistMatrix(currentSources, Resistors)
+            solveMatrix(NetlistMatrix, nodes)
         else:
             #This is a component, the way we parse depends on the designator
             designator = line[0][0] #first letter of first word
@@ -73,7 +74,7 @@ def parser(file):
                 node_1 = line[1]
                 node_2 = line[2]
                 conductance = 1/multiplier(line[3])
-                conductanceElements.append(Resistor(label, conductance, node_1, node_2))
+                conductanceElements(Resistors(label, conductance, node_1, node_2))
 
 def formNetlistMatrix(currentSources, Resistors):
     nodes = []
@@ -85,31 +86,29 @@ def formNetlistMatrix(currentSources, Resistors):
     for resistor in Resistors:
         if not(resistor.node_1 in nodes):
             nodes.append(resistor.node_1)
-        if not(resistor.node_2 in nodes):
+        if not(source.node_2 in nodes):
             nodes.append(resistor.node_2)
     new_nodes = [node for node in range(len(nodes))]
     for node in new_nodes:
         row = []
-        for source in currentSources:
+        for source in currentSource:
             if nodes[node] == source.in_node:
                 source.in_node = new_nodes[node]
             if nodes[node] == source.out_node:
                 source.out_node = new_nodes[node]
         for resistor in Resistors:
             if nodes[node] == resistor.node_1:
-                resistor.node_1 = new_nodes[node]
+                source.node_1 = new_nodes[node]
             if nodes[node] == resistor.node_2:
-                resistor.node_2 = new_nodes[node]
-
+                source.node_2 = new_nodes[node]
     netlistMatrix = []
-
     for node in new_nodes:
         row = []
-        for source in currentSources:
-            if (new_nodes[node] == source.in_node):
+        for source in currentSource:
+            if (nodes[node] == source.in_node) or (nodes[node] == source.out_node):
                 row.append(source)
         for resistor in Resistors:
-            if (new_nodes[node] == resistor.node_1):
+            if (nodes[node] == resistor.node_1) or (nodes[node] == resistor.node_2):
                 row.append(resistor)
         netlistMatrix.append(row)
     return (new_nodes, netlistMatrix)
@@ -119,37 +118,28 @@ def solveMatrix(netlistMatrix, nodes):
     voltages = [None for node in nodes]
     conductance_matrix = [[0 for node in nodes] for node in nodes]
     for node in nodes:
-        voltages[node] = "V" + str(node)
-        for row in netlistMatrix:
-            for component in row:
-                if component.label[0] == 'I':
-                    print(str(component.in_node) + " in")
-                    print(str(component.out_node) + " out")
-                    print(str(node)+" node")
-                    if component.out_node == node:
-                        current[node] += component.current
-                        print('foo')
-                    elif component.in_node == node:
-                        current[node] -= component.current
-                        print('bar')
-    for node_1 in nodes:
-        for node_2 in nodes:
-            if node_1 == node_2:
-                for row in netlistMatrix:
-                    for component in row:
-                        if component.label[0] == 'R':
-                            conductance_matrix[node_1][node_2] += component.conductance
-            else:
-                for row in netlistMatrix:
-                    for component in row:
-                        if component.label[0] == 'R':
-                            if ((component.node_1 == node_1) or (component.node_1 == node_2)) and ((component.node_2 == node_1) or (component.node_2 == node_2)):
+        voltages = "V" + str(node)
+        for component in netlistMatrix[node]:
+            if component.label()[0] == 'I':
+                if component.out_node == node:
+                    current[node] += component.current
+                elif component.in_node == node:
+                    current[node] -= component.current
+        for node_1 in nodes:
+            for node_2 in nodes:
+                if node_1 == node_2:
+                    for component in netlistMatrix[node]:
+                        if component.label()[0] == 'R':
+                            conductance_matrix[node_1][node_1] += component.conductance
+                else:
+                    for component in netlistMatrix[node]:
+                        if component.label()[0] == 'R':
+                            if ((component.node_1 == node_1) or (component.node_1 == node_2)) and ((component.node_2 == node_2) or (component.node_2 == node_2)):
                                 conductance_matrix[node_1][node_2] -= component.conductance
     a = np.array(conductance_matrix)
-    current = np.array(current)
-    print(current)
-    x = np.linalg.solve(a,current)
+    ainv = inv(a)
+    voltage_values = np.matmul(ainv, current)
     for node in nodes:
-        print(voltages[node] + " = " + str(x[node]))
+        print(voltages[node] + " = " + str(voltage_values[node]))
 
 parser(file)
