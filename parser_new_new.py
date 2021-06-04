@@ -87,7 +87,27 @@ def formNetlistMatrix(currentSources, Resistors):
             nodes.append(resistor.node_1)
         if not(resistor.node_2 in nodes):
             nodes.append(resistor.node_2)
-    new_nodes = [node for node in range(len(nodes))]
+
+    for node in nodes:
+        if(node == "0"):
+            ground = nodes.index(node)
+
+    new_nodes = [node for node in range(1, len(nodes))]
+
+    row = []
+    for source in currentSources:
+        if nodes[ground] == source.in_node:
+            source.in_node = 0
+        if nodes[ground] == source.out_node:
+            source.out_node = 0
+    for resistor in Resistors:
+        if nodes[ground] == resistor.node_1:
+            resistor.node_1 = 0
+        if nodes[ground] == resistor.node_2:
+            resistor.node_2 = 0
+
+    new_nodes.insert(0, 0)
+
     for node in new_nodes:
         row = []
         for source in currentSources:
@@ -123,15 +143,10 @@ def solveMatrix(netlistMatrix, nodes):
         for row in netlistMatrix:
             for component in row:
                 if component.label[0] == 'I':
-                    print(str(component.in_node) + " in")
-                    print(str(component.out_node) + " out")
-                    print(str(node)+" node")
                     if component.out_node == node:
                         current[node] += component.current
-                        print('foo')
                     elif component.in_node == node:
                         current[node] -= component.current
-                        print('bar')
     for node_1 in nodes:
         for node_2 in nodes:
             if node_1 == node_2:
@@ -145,10 +160,25 @@ def solveMatrix(netlistMatrix, nodes):
                         if component.label[0] == 'R':
                             if ((component.node_1 == node_1) or (component.node_1 == node_2)) and ((component.node_2 == node_1) or (component.node_2 == node_2)):
                                 conductance_matrix[node_1][node_2] -= component.conductance
-    a = np.array(conductance_matrix)
-    current = np.array(current)
-    print(current)
-    x = np.linalg.solve(a,current)
+    #To account for ground, we set the first column of the conductance matrix to equal 0 before solving
+    current = current[1:]
+    if len(current) == 1:
+        conductance_matrix = conductance_matrix[1:]
+        x = [0, current[0] * (1/conductance_matrix[0][1])]
+    else:
+        new_conductance_matrix = []
+        length = len(nodes)
+        for i in range(1,length):
+            for j in (1, length):
+                new_conductance_matrix = conductance_matrix
+        conductance_matrix = np.array(conductance_matrix)
+        print(conductance_matrix)
+        conductance_matrix = conductance_matrix[1:, :, :]
+        print(conductance_matrix)
+        conductance_matrix = conductance_matrix[:, 1:, :]
+        current = np.array(current)
+        x = np.linalg.solve(conductance_matrix,current)
+        x = [0, x]
     for node in nodes:
         print(voltages[node] + " = " + str(x[node]))
 
