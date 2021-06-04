@@ -28,16 +28,21 @@ def matrix_maker(row):
     x = []
     nodes = []
 
+#name nodes with integers instead
+#write a function to find maximum number of nodes
+
 class circuit_matrix:
-    def __init__(self):
-        nodes = []
-        currents = []
+    def __init__(self, max_num_of_nodes):
+        nodes = [i for i in range(max_num_of_nodes)]
+        current = []
     def node_check(self, node):
         if not(node in self.nodes):
             self.nodes.append(node)
     def dc_current(self, in_node, out_node, current):
         self.node_check(in_node)
         self.node_check(out_node)
+        currents = []
+
 #frequency
 
 def nodal_analysis(components):
@@ -171,6 +176,7 @@ def ac_voltage(plus_node, minus_node, amplitude, phase):
 def dc_voltage(plus_node, minus_node, voltage):
     components.push([minus_node, plus_node, voltage, None, None])
     # right side:
+    #for plus node row
     # += voltage
     # left side:
     #  for plus node row
