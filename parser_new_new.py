@@ -163,22 +163,21 @@ def solveMatrix(netlistMatrix, nodes):
     #To account for ground, we set the first column of the conductance matrix to equal 0 before solving
     current = current[1:]
     if len(current) == 1:
+        #we do the below as we can't use solve for 1 dimensional matrices
         conductance_matrix = conductance_matrix[1:]
         x = [0, current[0] * (1/conductance_matrix[0][1])]
     else:
-        new_conductance_matrix = []
-        length = len(nodes)
-        for i in range(1,length):
-            for j in (1, length):
-                new_conductance_matrix = conductance_matrix
-        conductance_matrix = np.array(conductance_matrix)
+        elimination_matrix = []
+        for row in conductance_matrix:
+            row = row[1:]
+            elimination_matrix.append(row)
+        conductance_matrix = np.array(elimination_matrix[1:])
         print(conductance_matrix)
-        conductance_matrix = conductance_matrix[1:, :, :]
-        print(conductance_matrix)
-        conductance_matrix = conductance_matrix[:, 1:, :]
         current = np.array(current)
         x = np.linalg.solve(conductance_matrix,current)
-        x = [0, x]
+        print(current)
+        #https://stackoverflow.com/questions/21761256/insert-element-into-numpy-array
+        x = np.insert(x,0,0)
     for node in nodes:
         print(voltages[node] + " = " + str(x[node]))
 
