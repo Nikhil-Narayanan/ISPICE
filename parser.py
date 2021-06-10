@@ -1,9 +1,29 @@
-import cmath
-import math
 import numpy as np
 
 file = open("netlist.txt", "r")
 
+class voltageSource:
+    def __init__(self, label, voltage, plus_node, minus_node):
+        self.label = label
+        self.voltage = voltage
+        self.plus_node = plus_node
+        self.minus_node = minus_node
+
+
+class currentSource:
+    def __init__(self, label, current, in_node, out_node):
+        self.label = label
+        self.current = current
+        self.in_node = in_node
+        self.out_node = out_node
+
+
+class Resistor:
+    def __init__(self, label, conductance, node_1, node_2):
+        self.label = label
+        self.conductance = conductance
+        self.node_1 = node_1
+        self.node_2 = node_2
 
 def multiplier(value):
     # parses the value into a floating point number assuming it's not AC or an active component
@@ -26,30 +46,6 @@ def multiplier(value):
         # no multiplier
         return float(value)
 
-class voltageSource:
-    def __int__(self, label, voltage, plus_node, minus_node):
-        self.label = label
-        self.voltage = voltage
-        self.plus_node = plus_node
-        self.minus_node = minus_node
-
-
-class currentSource:
-    def __init__(self, label, current, in_node, out_node):
-        self.label = label
-        self.current = current
-        self.in_node = in_node
-        self.out_node = out_node
-
-
-class Resistor:
-    def __init__(self, label, conductance, node_1, node_2):
-        self.label = label
-        self.conductance = conductance
-        self.node_1 = node_1
-        self.node_2 = node_2
-
-
 def terminate():
     pass
 
@@ -71,7 +67,7 @@ def parser(file):
         elif line[0] == '.end':
             # This signifies the end of the simulation file
             (nodes, netlistMatrix) = formNetlistMatrix(currentSources, voltageSources, conductanceElements)
-            solveMatrix(netlistMatrix, nodes)
+            solveMatrix(netlistMatrix, nodes, voltageSources)
         else:
             # This is a component, the way we parse depends on the designator
             designator = line[0][0]  # first letter of first word
@@ -130,9 +126,9 @@ def formNetlistMatrix(currentSources, voltageSources, Resistors):
                 resistor.node_2 = new_nodes[node]
         for voltageSource in voltageSources:
             if nodes[node] == voltageSource.plus_node:
-                voltageSources.plus_node = new_nodes[node]
+                voltageSource.plus_node = new_nodes[node]
             if nodes[node] == voltageSource.minus_node:
-                voltageSources.minus_node = new_nodes[node]
+                voltageSource.minus_node = new_nodes[node]
 
     netlistMatrix = []
 
@@ -174,18 +170,53 @@ def constructMatrixG(nodes, netlistMatrix):
                                 conductance_matrix[node_1 - 1][node_2 - 1] += -component.conductance
     return np.array(conductance_matrix) * 0.5
 
+def constructMatrixB(nodes, voltageSources):
+    nodes = nodes[1:]
+    B = [[0 for voltageSource in voltageSources] for node in nodes]
+    for i in range(len(voltageSources)):
+        for j in range(len(nodes)):
+            if (voltageSources[i].minus_node == nodes[j]):
+                B[j][i] = -1
+            if (voltageSources[i].plus_node == nodes[j]):
+                B[j][i] = 1
+    return np.array(B)
 
-def constructMatrixA(nodes, netlistMatrix):
-    return constructMatrixG(nodes, netlistMatrix)
+def constructMatrixC(nodes, voltageSources):
+   B = constructMatrixB(nodes, voltageSources)
+   C = B.transpose()
+   return C * 0.5
+
+def constructMatrixD(voltageSources):
+    D = [[0 for voltageSource in voltageSources] for voltageSource in voltageSources]
+    return np.array(D)
+
+def constructMatrixA(nodes, netlistMatrix, voltageSources):
+    G = constructMatrixG(nodes, netlistMatrix)
+    B = constructMatrixB(nodes, voltageSources)
+    C = constructMatrixC(nodes, voltageSources)
+    D = constructMatrixD(voltageSources)
+    U = np.concatenate((G,B), axis = 1)
+    L = []
+    if(not(len(voltageSources) == 0)):
+        L = np.concatenate((C,D), axis = 1)
+        A = np.concatenate((U,L), axis = 0)
+        return A
+    return U
+
 
 
 def constructMatrixV(nodes):
     nodes = nodes[1:]
     return ["V" + str(node) for node in nodes]
 
+def constructMatrixJ(voltageSources):
+    return ["I_" + voltageSource.label for voltageSource in voltageSources]
 
-def constructMatrixX(nodes, netlistMatrix):
-    return constructMatrixV(nodes)
+def constructMatrixX(nodes, voltageSources):
+    V = constructMatrixV(nodes)
+    J = constructMatrixJ(voltageSources)
+    X = V + J
+    return X
 
 
 def constructMatrixI(nodes, netlistMatrix):
@@ -201,18 +232,36 @@ def constructMatrixI(nodes, netlistMatrix):
     currents = currents[1:]
     return np.array(currents)
 
+def constructMatrixE(voltageSources):
+    E = []
+    for voltageSource in voltageSources:
+        E.append(voltageSource.voltage)
+    return np.array(E)
 
-def constructMatrixZ(nodes, netlistMatrix):
-    return constructMatrixI(nodes, netlistMatrix)
+def constructMatrixZ(nodes, netlistMatrix, voltageSources):
+    E = constructMatrixE(voltageSources)
+    I = constructMatrixI(nodes, netlistMatrix)
+    Z = np.concatenate((I,E), axis = 0)
+    return np.array(Z)
 
+def sortVoltage(voltageSources):
+    voltageStrings = []
+    for voltageSource in voltageSources:
+        voltageStrings.append(voltageSource.label)
+    voltageStrings.sort()
+    newVoltageSources = []
+    for i in range(len(voltageSources)):
+        if voltageSources[i].label == voltageStrings[i]:
+            newVoltageSources.append(voltageSources[i])
+    return newVoltageSources
 
-def solveMatrix(netlistMatrix, nodes):
-    A = constructMatrixA(nodes, netlistMatrix)
-    X = constructMatrixX(nodes, netlistMatrix)
-    Z = constructMatrixZ(nodes, netlistMatrix)
-    Solution = np.linalg.solve(A, Z) / 2
-    nodes = nodes[:-1]
-    for node in nodes:
+def solveMatrix(netlistMatrix, nodes, voltageSources):
+    voltageSources = sortVoltage(voltageSources)
+    A = constructMatrixA(nodes, netlistMatrix, voltageSources)
+    X = constructMatrixX(nodes, voltageSources)
+    Z = constructMatrixZ(nodes, netlistMatrix, voltageSources)
+    Solution = np.linalg.solve(A, Z) * 0.5
+    for node in range(len(nodes) - 1 + len(voltageSources)):
         print(X[node] + " = " + str(Solution[node]))
 
 
