@@ -26,6 +26,13 @@ def multiplier(value):
         # no multiplier
         return float(value)
 
+class voltageSource:
+    def __int__(self, label, voltage, plus_node, minus_node):
+        self.label = label
+        self.voltage = voltage
+        self.plus_node = plus_node
+        self.minus_node = minus_node
+
 
 class currentSource:
     def __init__(self, label, current, in_node, out_node):
@@ -48,6 +55,7 @@ def terminate():
 
 
 def parser(file):
+    voltageSources = []
     currentSources = []
     conductanceElements = []
     while True:
@@ -62,7 +70,7 @@ def parser(file):
             pass
         elif line[0] == '.end':
             # This signifies the end of the simulation file
-            (nodes, netlistMatrix) = formNetlistMatrix(currentSources, conductanceElements)
+            (nodes, netlistMatrix) = formNetlistMatrix(currentSources, voltageSources, conductanceElements)
             solveMatrix(netlistMatrix, nodes)
         else:
             # This is a component, the way we parse depends on the designator
@@ -73,6 +81,12 @@ def parser(file):
                 out_node = line[2]
                 current = multiplier(line[3])
                 currentSources.append(currentSource(label, current, in_node, out_node))
+            elif designator == 'V':
+                label = line[0]
+                plus_node = line[1]
+                minus_node = line[2]
+                voltage = multiplier(line[3])
+                voltageSources.append(voltageSource(label, voltage, plus_node, minus_node))
             elif designator == 'R':
                 label = line[0]
                 node_1 = line[1]
@@ -81,7 +95,7 @@ def parser(file):
                 conductanceElements.append(Resistor(label, conductance, node_1, node_2))
 
 
-def formNetlistMatrix(currentSources, Resistors):
+def formNetlistMatrix(currentSources, voltageSources, Resistors):
     nodes = []
     for source in currentSources:
         if not (source.in_node in nodes):
@@ -93,6 +107,11 @@ def formNetlistMatrix(currentSources, Resistors):
             nodes.append(resistor.node_1)
         if not (resistor.node_2 in nodes):
             nodes.append(resistor.node_2)
+    for voltageSource in voltageSources:
+        if not (voltageSource.plus_node in nodes):
+            nodes.append(voltageSource.plus_node)
+        if not (voltageSource.minus_node in nodes):
+            nodes.append(voltageSource.minus_node)
 
     nodes.sort()
 
@@ -109,6 +128,11 @@ def formNetlistMatrix(currentSources, Resistors):
                 resistor.node_1 = new_nodes[node]
             if nodes[node] == resistor.node_2:
                 resistor.node_2 = new_nodes[node]
+        for voltageSource in voltageSources:
+            if nodes[node] == voltageSource.plus_node:
+                voltageSources.plus_node = new_nodes[node]
+            if nodes[node] == voltageSource.minus_node:
+                voltageSources.minus_node = new_nodes[node]
 
     netlistMatrix = []
 
@@ -120,6 +144,9 @@ def formNetlistMatrix(currentSources, Resistors):
         for resistor in Resistors:
             if ((new_nodes[node] == resistor.node_1) or (new_nodes[node] == resistor.node_2)):
                 row.append(resistor)
+        for voltageSource in voltageSources:
+            if (new_nodes[node == voltageSource.plus_node]):
+                row.append(voltageSource)
         netlistMatrix.append(row)
     return (new_nodes, netlistMatrix)
 
