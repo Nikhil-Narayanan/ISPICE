@@ -9,7 +9,6 @@ class voltageSource:
         self.plus_node = plus_node
         self.minus_node = minus_node
 
-
 class currentSource:
     def __init__(self, label, current, in_node, out_node):
         self.label = label
@@ -17,13 +16,35 @@ class currentSource:
         self.in_node = in_node
         self.out_node = out_node
 
-
 class Resistor:
     def __init__(self, label, conductance, node_1, node_2):
         self.label = label
         self.conductance = conductance
         self.node_1 = node_1
         self.node_2 = node_2
+
+class Inductor:
+    def __init__(self, label, conductance, node_1, node_2):
+        self.label = label
+        self.conductance = conductance
+        self.node_1 = node_1
+        self.node_2 = node_2
+    def update_conductance(self, omega):
+        self.conductance = self.conductance / omega
+        return self.conductance
+
+class Capacitor:
+    def __init__(self, label, conductance, node_1, node_2):
+        self.label = label
+        self.conductance = conductance
+        self.node_1 = node_1
+        self.node_2 = node_2
+    def update_conductance(self, omega):
+        self.conductance = self.conductance * omega
+        return self.conductance
+
+solve DC op point with ac = 0
+solve ac by removing dc values
 
 def multiplier(value):
     # parses the value into a floating point number assuming it's not AC or an active component
@@ -49,6 +70,24 @@ def multiplier(value):
 def terminate():
     pass
 
+def frequency_generator(start_freq, stop_freq, points_per_decade):
+    frequencies = []
+    frequency = 0
+    n = 0
+    while(frequency <= stop_freq):
+        frequency = 10**(n/points_per_decade)*start_freq
+        n = n + 1
+        frequencies.append(frequency)
+    return frequencies
+
+#for dc make it a really small frequency
+
+#take frequencies
+#find DC .op
+#find ac values
+#output/input, VR1/V1 for every freq in the sweep, only magnitude
+#ask in terminal for output and input nodes/sources
+#first source input, last line output
 
 def parser(file):
     voltageSources = []
@@ -66,7 +105,14 @@ def parser(file):
             pass
         elif line[0] == '.end':
             # This signifies the end of the simulation file
-            (nodes, netlistMatrix) = formNetlistMatrix(currentSources, voltageSources, conductanceElements)
+            terminate()
+        elif line[0] == '.ac':
+            points_per_dec = multiplier(line[2])
+            start_freq = multiplier(line[3])
+            stop_freq = multiplier(line[4])
+            frequencies = frequency_generator(start_freq, stop_freq, points_per_dec)
+            frequency = frequencies[0]
+            (nodes, netlistMatrix) = formNetlistMatrix(currentSources, voltageSources, conductanceElements, frequency)
             solveMatrix(netlistMatrix, nodes, voltageSources)
         else:
             # This is a component, the way we parse depends on the designator
@@ -75,13 +121,27 @@ def parser(file):
                 label = line[0]
                 in_node = line[1]
                 out_node = line[2]
-                current = multiplier(line[3])
+                if line[3][0] == 'A':
+                    AC = line[3]
+                    AC = AC[3:-1].split()
+                    amplitude = multiplier(AC[0])
+                    phase = np.deg2rad(multiplier(AC[1]))
+                    current = np.complex(amplitude*np.cos(omega + or - phase),amplitude*np.sin(phase))
+                else:
+                    current = multiplier(line[3])
                 currentSources.append(currentSource(label, current, in_node, out_node))
             elif designator == 'V':
                 label = line[0]
                 plus_node = line[1]
                 minus_node = line[2]
-                voltage = multiplier(line[3])
+                if line[3][0] == 'A':
+                    AC = line[3]
+                    AC = AC[3:-1].split()
+                    amplitude = multiplier(AC[0])
+                    phase = np.deg2rad(multiplier(AC[1]))
+                    voltage = np.complex(amplitude*np.cos(phase),amplitude*np.sin(phase))
+                else:
+                    voltage = multiplier(line[3])
                 voltageSources.append(voltageSource(label, voltage, plus_node, minus_node))
             elif designator == 'R':
                 label = line[0]
@@ -89,20 +149,36 @@ def parser(file):
                 node_2 = line[2]
                 conductance = 1 / multiplier(line[3])
                 conductanceElements.append(Resistor(label, conductance, node_1, node_2))
+            elif designator == 'L':
+                label = line[0]
+                node_1 = line[1]
+                node_2 = line[2]
+                #assume initially that omega is 1, f=0 for dc analysis
+                conductance = 1 /(1j * multiplier(line[3]))
+                conductanceElements.append(Inductor(label, conductance, node_1, node_2))
+            elif designator == 'C':
+                label = line[0]
+                node_1 = line[1]
+                node_2 = line[2]
+                #assume initially that omega is 1, 2pif
+                conductance = 1j * multiplier(line[3])
+                conductanceElements.append(Capacitor(label, conductance, node_1, node_2))
 
-
-def formNetlistMatrix(currentSources, voltageSources, Resistors):
+def formNetlistMatrix(currentSources, voltageSources, conductanceElements, frequency):
     nodes = []
     for source in currentSources:
         if not (source.in_node in nodes):
             nodes.append(source.in_node)
         if not (source.out_node in nodes):
             nodes.append(source.out_node)
-    for resistor in Resistors:
-        if not (resistor.node_1 in nodes):
-            nodes.append(resistor.node_1)
-        if not (resistor.node_2 in nodes):
-            nodes.append(resistor.node_2)
+    for conductanceElement in conductanceElements:
+        if not (conductanceElement.node_1 in nodes):
+            nodes.append(conductanceElement.node_1)
+        if not (conductanceElement.node_2 in nodes):
+            nodes.append(conductanceElement.node_2)
+        #below we adjust the conductance element by frequency
+        if((conductanceElement.label[0] == 'C') or (conductanceElement.label[0] == 'L')):
+            conductanceElement.update_conductance(frequency)
     for voltageSource in voltageSources:
         if not (voltageSource.plus_node in nodes):
             nodes.append(voltageSource.plus_node)
@@ -119,11 +195,11 @@ def formNetlistMatrix(currentSources, voltageSources, Resistors):
                 source.in_node = new_nodes[node]
             if nodes[node] == source.out_node:
                 source.out_node = new_nodes[node]
-        for resistor in Resistors:
-            if nodes[node] == resistor.node_1:
-                resistor.node_1 = new_nodes[node]
-            if nodes[node] == resistor.node_2:
-                resistor.node_2 = new_nodes[node]
+        for conductanceElement in conductanceElements:
+            if nodes[node] == conductanceElement.node_1:
+                conductanceElement.node_1 = new_nodes[node]
+            if nodes[node] == conductanceElement.node_2:
+                conductanceElement.node_2 = new_nodes[node]
         for voltageSource in voltageSources:
             if nodes[node] == voltageSource.plus_node:
                 voltageSource.plus_node = new_nodes[node]
@@ -137,15 +213,14 @@ def formNetlistMatrix(currentSources, voltageSources, Resistors):
         for source in currentSources:
             if ((new_nodes[node] == source.in_node) or (new_nodes[node] == source.out_node)):
                 row.append(source)
-        for resistor in Resistors:
-            if ((new_nodes[node] == resistor.node_1) or (new_nodes[node] == resistor.node_2)):
-                row.append(resistor)
+        for conductanceElement in conductanceElements:
+            if ((new_nodes[node] == conductanceElement.node_1) or (new_nodes[node] == conductanceElement.node_2)):
+                row.append(conductanceElement)
         for voltageSource in voltageSources:
             if (new_nodes[node == voltageSource.plus_node]):
                 row.append(voltageSource)
         netlistMatrix.append(row)
     return (new_nodes, netlistMatrix)
-
 
 def constructMatrixG(nodes, netlistMatrix):
     nodes = nodes[1:]
@@ -155,7 +230,7 @@ def constructMatrixG(nodes, netlistMatrix):
             if (node_1 == node_2):
                 for row in netlistMatrix:
                     for component in row:
-                        if (component.label[0] == 'R'):
+                        if (component.label[0] == 'R') or (component.label[0] == 'C') or (component.label[0] == 'L'):
                             if ((((component.node_1 == node_1) or (component.node_1 == node_2)) and (
                                     (component.node_2 == node_1) or (component.node_2 == node_2))) or (
                                     (node_1 == node_2) and (
@@ -164,7 +239,7 @@ def constructMatrixG(nodes, netlistMatrix):
             else:
                 for row in netlistMatrix:
                     for component in row:
-                        if component.label[0] == 'R':
+                        if (component.label[0] == 'R') or (component.label[0] == 'C') or (component.label[0] == 'L'):
                             if ((component.node_1 == node_1) or (component.node_1 == node_2)) and (
                                     (component.node_2 == node_1) or (component.node_2 == node_2)):
                                 conductance_matrix[node_1 - 1][node_2 - 1] += -component.conductance
@@ -203,8 +278,6 @@ def constructMatrixA(nodes, netlistMatrix, voltageSources):
         return A
     return U
 
-
-
 def constructMatrixV(nodes):
     nodes = nodes[1:]
     return ["V" + str(node) for node in nodes]
@@ -217,7 +290,6 @@ def constructMatrixX(nodes, voltageSources):
     J = constructMatrixJ(voltageSources)
     X = V + J
     return X
-
 
 def constructMatrixI(nodes, netlistMatrix):
     currents = [0 for node in nodes]
@@ -263,6 +335,5 @@ def solveMatrix(netlistMatrix, nodes, voltageSources):
     Solution = np.linalg.solve(A, Z) * 0.5
     for node in range(len(nodes) - 1 + len(voltageSources)):
         print(X[node] + " = " + str(Solution[node]))
-
 
 parser(file)
