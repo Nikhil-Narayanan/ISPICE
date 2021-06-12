@@ -3,18 +3,28 @@ import numpy as np
 file = open("netlist.txt", "r")
 
 class voltageSource:
-    def __init__(self, label, voltage, plus_node, minus_node):
+    def __init__(self, label, voltage, plus_node, minus_node, ac_bool):
         self.label = label
         self.voltage = voltage
         self.plus_node = plus_node
         self.minus_node = minus_node
+        self.ac_bool = ac_bool
+    def update_voltage(self, omega):
+        if self.ac_bool:
+            self.voltage = np.complex(self.voltage * np.cos(omega), self.voltage * np.sin(omega))
+            return self.voltage
 
 class currentSource:
-    def __init__(self, label, current, in_node, out_node):
+    def __init__(self, label, current, in_node, out_node, ac_bool):
         self.label = label
         self.current = current
         self.in_node = in_node
         self.out_node = out_node
+        self.ac_bool = ac_bool
+    def update_current(self, omega):
+        if self.ac_bool:
+            self.current = np.complex(self.current*np.cos(omega),self.current*np.sin(omega))
+            return self.current
 
 class Resistor:
     def __init__(self, label, conductance, node_1, node_2):
@@ -43,8 +53,8 @@ class Capacitor:
         self.conductance = self.conductance * omega
         return self.conductance
 
-solve DC op point with ac = 0
-solve ac by removing dc values
+#solve DC op point with ac = 0
+#solve ac by removing dc values
 
 def multiplier(value):
     # parses the value into a floating point number assuming it's not AC or an active component
@@ -66,6 +76,18 @@ def multiplier(value):
     else:
         # no multiplier
         return float(value)
+
+def multiplier_tester_func():
+    #here is a function I made to test the multiplier, it works as expected
+    while True:
+        prefix = ['p', 'n', 'u', 'm', 'k', 'Meg', 'G', '']
+        num = random.randrange(-1000,1000)
+        num = str(num) + prefix[random.randint(0,7)]
+        print(num)
+        print(multiplier(num))
+        check = input("Enter N if wrong: ")
+        if(check == "N"):
+            break
 
 def terminate():
     pass
@@ -111,9 +133,9 @@ def parser(file):
             start_freq = multiplier(line[3])
             stop_freq = multiplier(line[4])
             frequencies = frequency_generator(start_freq, stop_freq, points_per_dec)
-            frequency = frequencies[0]
-            (nodes, netlistMatrix) = formNetlistMatrix(currentSources, voltageSources, conductanceElements, frequency)
-            solveMatrix(netlistMatrix, nodes, voltageSources)
+            for frequency in frequencies:
+                (nodes, netlistMatrix) = formNetlistMatrix(currentSources, voltageSources, conductanceElements, frequency)
+                solveMatrix(netlistMatrix, nodes, voltageSources)
         else:
             # This is a component, the way we parse depends on the designator
             designator = line[0][0]  # first letter of first word
@@ -121,28 +143,31 @@ def parser(file):
                 label = line[0]
                 in_node = line[1]
                 out_node = line[2]
-                if line[3][0] == 'A':
+                ac_bool = line[3][0] == 'A'
+                if ac_bool:
                     AC = line[3]
                     AC = AC[3:-1].split()
                     amplitude = multiplier(AC[0])
                     phase = np.deg2rad(multiplier(AC[1]))
-                    current = np.complex(amplitude*np.cos(omega + or - phase),amplitude*np.sin(phase))
+                    #for now assume phase = 0
+                    current = amplitude
                 else:
                     current = multiplier(line[3])
-                currentSources.append(currentSource(label, current, in_node, out_node))
+                currentSources.append(currentSource(label, current, in_node, out_node, ac_bool))
             elif designator == 'V':
                 label = line[0]
                 plus_node = line[1]
                 minus_node = line[2]
-                if line[3][0] == 'A':
+                ac_bool = line[3][0] == 'A'
+                if ac_bool:
                     AC = line[3]
                     AC = AC[3:-1].split()
                     amplitude = multiplier(AC[0])
                     phase = np.deg2rad(multiplier(AC[1]))
-                    voltage = np.complex(amplitude*np.cos(phase),amplitude*np.sin(phase))
+                    voltage = amplitude
                 else:
                     voltage = multiplier(line[3])
-                voltageSources.append(voltageSource(label, voltage, plus_node, minus_node))
+                voltageSources.append(voltageSource(label, voltage, plus_node, minus_node, ac_bool))
             elif designator == 'R':
                 label = line[0]
                 node_1 = line[1]
@@ -163,6 +188,36 @@ def parser(file):
                 #assume initially that omega is 1, 2pif
                 conductance = 1j * multiplier(line[3])
                 conductanceElements.append(Capacitor(label, conductance, node_1, node_2))
+            elif designator == 'D':
+                anode = line[1]
+                cathode = line[2]
+                if line[3] == 'D':
+                    #blah
+            elif designator == 'Q':
+                collector = line[1]
+                base = line[2]
+                emitter = line[3]
+                if line[4] == 'NPN':
+                    #NPN
+                elif line[4] == 'PNP':
+                    #PNP
+            elif designator == 'M':
+                drain = line[1]
+                gate = line[2]
+                source = line[3]
+                if line[4] == 'NMOS':
+                    #NMOS
+                elif line[4] == 'PMOS':
+                    #PMOS
+            elif designator == 'G':
+                plus = line[1]
+                minus = line[2]
+                control_plus = line[3]
+                control_minus = line[4]
+                transconductance = multiplier(line[5])
+                #VCCS
+                #current = (control_plus - control_minus) * transconductance
+                #dc_current(minus, plus, current)
 
 def formNetlistMatrix(currentSources, voltageSources, conductanceElements, frequency):
     nodes = []
@@ -171,6 +226,7 @@ def formNetlistMatrix(currentSources, voltageSources, conductanceElements, frequ
             nodes.append(source.in_node)
         if not (source.out_node in nodes):
             nodes.append(source.out_node)
+        source.update_current(frequency*2*np.pi)
     for conductanceElement in conductanceElements:
         if not (conductanceElement.node_1 in nodes):
             nodes.append(conductanceElement.node_1)
@@ -178,12 +234,13 @@ def formNetlistMatrix(currentSources, voltageSources, conductanceElements, frequ
             nodes.append(conductanceElement.node_2)
         #below we adjust the conductance element by frequency
         if((conductanceElement.label[0] == 'C') or (conductanceElement.label[0] == 'L')):
-            conductanceElement.update_conductance(frequency)
+            conductanceElement.update_conductance(frequency*2*np.pi)
     for voltageSource in voltageSources:
         if not (voltageSource.plus_node in nodes):
             nodes.append(voltageSource.plus_node)
         if not (voltageSource.minus_node in nodes):
             nodes.append(voltageSource.minus_node)
+        voltageSource.update_voltage(frequency*2*np.pi)
 
     nodes.sort()
 
