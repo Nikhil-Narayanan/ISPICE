@@ -1,6 +1,8 @@
 import numpy as np
 import random
 import matplotlib.pyplot as plt
+import pandas as pd
+import seaborn as sns
 
 file = open("netlist.txt", "r")
 
@@ -166,11 +168,10 @@ def parser(file):
             for frequency in frequencies:
                 (nodes, netlistMatrix) = formNetlistMatrix(currentSources, voltageSources, conductanceElements, frequency, False)
                 magnitudes.append(solveMatrix(netlistMatrix, nodes, voltageSources))
-            plt.plot(frequencies, magnitudes)
-            plt.xscale('log')
-            plt.title('Frequency Response')
-            plt.grid(True)
-            plt.show()
+            magnitudes = 20 * np.log10(magnitudes)
+            d = {'Frequencies (Hz): ': frequencies, 'Gain (dB): ': magnitudes}
+            df = pd.DataFrame(data = d)
+            sns.lmplot(x='Frequencies (Hz)', y='Gain (dB)', data = df)
             #put magnitudes and frequencies on the matlab script
         else:
             # This is a component, the way we parse depends on the designator
@@ -181,10 +182,8 @@ def parser(file):
                 out_node = line[2]
                 ac_bool = line[3][0] == 'A'
                 if ac_bool:
-                    AC = line[3]
-                    AC = AC[3:-1].split()
-                    amplitude = multiplier(AC[0])
-                    phase = np.deg2rad(multiplier(AC[1]))
+                    amplitude = multiplier(line[4][1:])
+                    phase = np.deg2rad(multiplier(line[5][:-1]))
                     current = np.complex(amplitude * np.cos(phase), amplitude * np.sin(phase))
                 else:
                     current = multiplier(line[3])
@@ -195,10 +194,8 @@ def parser(file):
                 minus_node = line[2]
                 ac_bool = line[3][0] == 'A'
                 if ac_bool:
-                    AC = line[3]
-                    AC = AC[3:-1].split()
-                    amplitude = multiplier(AC[0])
-                    phase = np.deg2rad(multiplier(AC[1]))
+                    amplitude = multiplier(line[4][1:])
+                    phase = np.deg2rad(multiplier(line[5][:-1]))
                     voltage = np.complex(amplitude * np.cos(phase), amplitude * np.sin(phase))
                 else:
                     voltage = multiplier(line[3])
@@ -436,13 +433,22 @@ def solveMatrix(netlistMatrix, nodes, voltageSources):
     Solution = np.linalg.solve(A, Z) * 0.5
     node_1 = voltageSources[0].plus_node
     node_2 = voltageSources[0].minus_node
+    print(node_2)
+    bool_notground = False
     for element in range(len(nodes)):
         if (X[element] == "V" + str(node_1)):
             voltage_1 = Solution[element]
+            bool_notground = True
+    if bool_notground == False:
+        voltage_1 = 0
+    bool_notground = False
     for element in range(len(nodes)):
         if (X[element] == "V" + str(node_2)):
             voltage_2 = Solution[element]
-    input_voltage = voltage = voltage_2 - voltage_1
+            bool_notground = True
+    if bool_notground == False:
+        voltage_2 = 0
+    input_voltage = voltage_2 - voltage_1
     index1 = 0
     index2 = 0
     component = netlistMatrix[index1][index2]
