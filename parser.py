@@ -169,9 +169,19 @@ def parser(file):
                 (nodes, netlistMatrix) = formNetlistMatrix(currentSources, voltageSources, conductanceElements, frequency, False)
                 magnitudes.append(solveMatrix(netlistMatrix, nodes, voltageSources))
             magnitudes = 20 * np.log10(magnitudes)
-            d = {'Frequencies (Hz): ': frequencies, 'Gain (dB): ': magnitudes}
+            d = {'Frequency (Hz)': frequencies, 'Gain (dB)': magnitudes}
             df = pd.DataFrame(data = d)
-            sns.lmplot(x='Frequencies (Hz)', y='Gain (dB)', data = df)
+            print(df)
+            (nodes, netlistMatrix) = formNetlistMatrix(currentSources, voltageSources, conductanceElements, 12, False)
+            print(solveMatrix(netlistMatrix, nodes, voltageSources))
+            sns.set_style("darkgrid")
+            sns.set_context("paper")
+            sns.lineplot(x='Frequency (Hz)', y='Gain (dB)', data=df)
+            plt.xscale('log')
+            plt.ylim(None, 3)
+            plt.title("Frequency Response", fontsize=14, weight='bold')
+            plt.show()
+
             #put magnitudes and frequencies on the matlab script
         else:
             # This is a component, the way we parse depends on the designator
@@ -252,6 +262,7 @@ def parser(file):
                 control_plus = line[3]
                 control_minus = line[4]
                 transconductance = multiplier(line[5])
+                #Make changes to matrix G
                 #VCCS
                 #current = (control_plus - control_minus) * transconductance
                 #dc_current(minus, plus, current)
@@ -433,7 +444,6 @@ def solveMatrix(netlistMatrix, nodes, voltageSources):
     Solution = np.linalg.solve(A, Z) * 0.5
     node_1 = voltageSources[0].plus_node
     node_2 = voltageSources[0].minus_node
-    print(node_2)
     bool_notground = False
     for element in range(len(nodes)):
         if (X[element] == "V" + str(node_1)):
