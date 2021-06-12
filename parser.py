@@ -131,6 +131,7 @@ def parser(file):
             terminate()
         elif line[0] == '.op':
             frequency = 0.000000000000000000000000000000000001
+            print('DC OPERATING POINT')
             (nodes, netlistMatrix) = formNetlistMatrix(currentSources, voltageSources, conductanceElements, frequency)
             solveMatrix(netlistMatrix, nodes, voltageSources)
         elif line[0] == '.ac':
@@ -138,9 +139,11 @@ def parser(file):
             start_freq = multiplier(line[3])
             stop_freq = multiplier(line[4])
             frequencies = frequency_generator(start_freq, stop_freq, points_per_dec)
+            magnitudes = []
             for frequency in frequencies:
                 (nodes, netlistMatrix) = formNetlistMatrix(currentSources, voltageSources, conductanceElements, frequency)
-                solveMatrix(netlistMatrix, nodes, voltageSources)
+                magnitudes.append(solveMatrix(netlistMatrix, nodes, voltageSources))
+            #put magnitudes and frequencies on the matlab script
         else:
             # This is a component, the way we parse depends on the designator
             designator = line[0][0]  # first letter of first word
@@ -400,7 +403,29 @@ def solveMatrix(netlistMatrix, nodes, voltageSources):
     X = constructMatrixX(nodes, voltageSources)
     Z = constructMatrixZ(nodes, netlistMatrix, voltageSources)
     Solution = np.linalg.solve(A, Z) * 0.5
-    for node in range(len(nodes) - 1 + len(voltageSources)):
-        print(X[node] + " = " + str(Solution[node]))
+    for row in netlistMatrix:
+        for component in row:
+            if (component.label[0] == 'I') and (component.ac_bool == True):
+                node_1 = component.out_node
+                node_2 = component.in_node
+                break
+            elif (component.label[0] == 'V') and (component.ac_bool == True):
+                node_1 = component.plus_node
+                node_2 = component.minus_node
+                break
+        else:
+            continue
+        break
+    for element in range(len(nodes)):
+        if (X[element] == "V" + str(node_1)):
+            voltage_1 = Solution[element]
+    for element in range(len(nodes)):
+        if (X[element] == "V" + str(node_2)):
+            voltage_2 = Solution[element]
+    output_voltage = Solution[len(nodes) - 1]
+    input_voltage = voltage = voltage_2 - voltage_1
+    for element in range(len(nodes) - 1 + len(voltageSources)):
+        print(X[element] + " = " + str(Solution[element]))
+    return output_voltage/input_voltage
 
 parser(file)
