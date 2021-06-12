@@ -434,30 +434,33 @@ def solveMatrix(netlistMatrix, nodes, voltageSources):
     X = constructMatrixX(nodes, voltageSources)
     Z = constructMatrixZ(nodes, netlistMatrix, voltageSources)
     Solution = np.linalg.solve(A, Z) * 0.5
-    for row in netlistMatrix:
-        for component in row:
-            #consider remove
-            if (component.label[0] == 'I') and (component.ac_bool == True):
-                node_1 = component.out_node
-                node_2 = component.in_node
-                break
-            elif (component.label[0] == 'V') and (component.ac_bool == True):
-                node_1 = component.plus_node
-                node_2 = component.minus_node
-                break
-        else:
-            continue
-        break
+    node_1 = voltageSources[0].plus_node
+    node_2 = voltageSources[0].minus_node
     for element in range(len(nodes)):
         if (X[element] == "V" + str(node_1)):
             voltage_1 = Solution[element]
     for element in range(len(nodes)):
         if (X[element] == "V" + str(node_2)):
             voltage_2 = Solution[element]
-    output_voltage = Solution[len(nodes) - 1]
     input_voltage = voltage = voltage_2 - voltage_1
+    index1 = 0
+    index2 = 0
+    component = netlistMatrix[index1][index2]
+    row = netlistMatrix[index1]
+    while component == 'V':
+        if row == []:
+            index1 = index1 + 1
+            row = netlistMatrix[index1]
+        else:
+            row.pop(index2)
+            index2 = index2 + 1
+            component = row[index2]
+    output_node = component.node_1
+    for node in range(len(nodes) - 1):
+        if(node + 1 == output_node):
+            output_voltage = Solution[node]
     for element in range(len(nodes) - 1 + len(voltageSources)):
         print(X[element] + " = " + str(Solution[element]))
-    return output_voltage/input_voltage
+    return np.absolute(output_voltage/input_voltage)
 
 parser(file)
