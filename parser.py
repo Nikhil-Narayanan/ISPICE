@@ -1,4 +1,5 @@
 import numpy as np
+import random
 
 file = open("netlist.txt", "r")
 
@@ -128,6 +129,10 @@ def parser(file):
         elif line[0] == '.end':
             # This signifies the end of the simulation file
             terminate()
+        elif line[0] == '.op':
+            frequency = 0.000000000000000000000000000000000001
+            (nodes, netlistMatrix) = formNetlistMatrix(currentSources, voltageSources, conductanceElements, frequency)
+            solveMatrix(netlistMatrix, nodes, voltageSources)
         elif line[0] == '.ac':
             points_per_dec = multiplier(line[2])
             start_freq = multiplier(line[3])
@@ -193,22 +198,27 @@ def parser(file):
                 cathode = line[2]
                 if line[3] == 'D':
                     #blah
+                    pass
             elif designator == 'Q':
                 collector = line[1]
                 base = line[2]
                 emitter = line[3]
                 if line[4] == 'NPN':
                     #NPN
+                    pass
                 elif line[4] == 'PNP':
                     #PNP
+                    pass
             elif designator == 'M':
                 drain = line[1]
                 gate = line[2]
                 source = line[3]
                 if line[4] == 'NMOS':
                     #NMOS
+                    pass
                 elif line[4] == 'PMOS':
                     #PMOS
+                    pass
             elif designator == 'G':
                 plus = line[1]
                 minus = line[2]
