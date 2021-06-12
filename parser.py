@@ -1,5 +1,6 @@
 import numpy as np
 import random
+import matplotlib.pyplot as plt
 
 file = open("netlist.txt", "r")
 
@@ -11,6 +12,7 @@ class voltageSource:
         self.minus_node = minus_node
         self.ac_bool = ac_bool
     def update_voltage(self, omega):
+        #think about whether this is necessary
         if self.ac_bool:
             self.voltage = np.complex(self.voltage * np.cos(omega), self.voltage * np.sin(omega))
             return self.voltage
@@ -143,6 +145,10 @@ def parser(file):
             for frequency in frequencies:
                 (nodes, netlistMatrix) = formNetlistMatrix(currentSources, voltageSources, conductanceElements, frequency)
                 magnitudes.append(solveMatrix(netlistMatrix, nodes, voltageSources))
+            plt.plot(frequencies, magnitudes)
+            plt.xscale('log')
+            plt.title('Frequency Response')
+            plt.grid(True)
             #put magnitudes and frequencies on the matlab script
         else:
             # This is a component, the way we parse depends on the designator
