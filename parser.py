@@ -5,29 +5,50 @@ import matplotlib.pyplot as plt
 file = open("netlist.txt", "r")
 
 class voltageSource:
-    def __init__(self, label, voltage, plus_node, minus_node, ac_bool):
+    def __init__(self, label, voltage, plus_node, minus_node, ac_bool, op_bool):
         self.label = label
         self.voltage = voltage
         self.plus_node = plus_node
         self.minus_node = minus_node
         self.ac_bool = ac_bool
-    def update_voltage(self, omega):
-        #think about whether this is necessary
+        self.op_bool = op_bool
+    def update_voltage(self):
+        #think about whether this is necessary, pls
         if self.ac_bool:
-            self.voltage = np.complex(self.voltage * np.cos(omega), self.voltage * np.sin(omega))
-            return self.voltage
+            if self.op_bool:
+                self.voltage = 0
+                return self.voltage
+            else:
+                return self.voltage
+        else:
+            if self.op_bool:
+                return self.voltage
+            else:
+                self.voltage = 0
+                return self.voltage
 
 class currentSource:
-    def __init__(self, label, current, in_node, out_node, ac_bool):
+    def __init__(self, label, current, in_node, out_node, ac_bool, op_bool):
         self.label = label
         self.current = current
         self.in_node = in_node
         self.out_node = out_node
         self.ac_bool = ac_bool
-    def update_current(self, omega):
+        self.op_bool = op_bool
+    def update_current(self):
         if self.ac_bool:
-            self.current = np.complex(self.current*np.cos(omega),self.current*np.sin(omega))
-            return self.current
+            if self.op_bool:
+                self.current = 0
+                return self.current
+            else:
+                return self.current
+        else:
+            if self.op_bool:
+                return self.current
+            else:
+                self.current = 0
+                return self.current
+
 
 class Resistor:
     def __init__(self, label, conductance, node_1, node_2):
@@ -134,7 +155,7 @@ def parser(file):
         elif line[0] == '.op':
             frequency = 0.000000000000000000000000000000000001
             print('DC OPERATING POINT')
-            (nodes, netlistMatrix) = formNetlistMatrix(currentSources, voltageSources, conductanceElements, frequency)
+            (nodes, netlistMatrix) = formNetlistMatrix(currentSources, voltageSources, conductanceElements, frequency, True)
             solveMatrix(netlistMatrix, nodes, voltageSources)
         elif line[0] == '.ac':
             points_per_dec = multiplier(line[2])
@@ -143,12 +164,13 @@ def parser(file):
             frequencies = frequency_generator(start_freq, stop_freq, points_per_dec)
             magnitudes = []
             for frequency in frequencies:
-                (nodes, netlistMatrix) = formNetlistMatrix(currentSources, voltageSources, conductanceElements, frequency)
+                (nodes, netlistMatrix) = formNetlistMatrix(currentSources, voltageSources, conductanceElements, frequency, False)
                 magnitudes.append(solveMatrix(netlistMatrix, nodes, voltageSources))
             plt.plot(frequencies, magnitudes)
             plt.xscale('log')
             plt.title('Frequency Response')
             plt.grid(True)
+            plt.show()
             #put magnitudes and frequencies on the matlab script
         else:
             # This is a component, the way we parse depends on the designator
@@ -163,11 +185,10 @@ def parser(file):
                     AC = AC[3:-1].split()
                     amplitude = multiplier(AC[0])
                     phase = np.deg2rad(multiplier(AC[1]))
-                    #for now assume phase = 0
-                    current = amplitude
+                    current = np.complex(amplitude * np.cos(phase), amplitude * np.sin(phase))
                 else:
                     current = multiplier(line[3])
-                currentSources.append(currentSource(label, current, in_node, out_node, ac_bool))
+                currentSources.append(currentSource(label, current, in_node, out_node, ac_bool, False))
             elif designator == 'V':
                 label = line[0]
                 plus_node = line[1]
@@ -178,10 +199,10 @@ def parser(file):
                     AC = AC[3:-1].split()
                     amplitude = multiplier(AC[0])
                     phase = np.deg2rad(multiplier(AC[1]))
-                    voltage = amplitude
+                    voltage = np.complex(amplitude * np.cos(phase), amplitude * np.sin(phase))
                 else:
                     voltage = multiplier(line[3])
-                voltageSources.append(voltageSource(label, voltage, plus_node, minus_node, ac_bool))
+                voltageSources.append(voltageSource(label, voltage, plus_node, minus_node, ac_bool, False))
             elif designator == 'R':
                 label = line[0]
                 node_1 = line[1]
@@ -238,14 +259,16 @@ def parser(file):
                 #current = (control_plus - control_minus) * transconductance
                 #dc_current(minus, plus, current)
 
-def formNetlistMatrix(currentSources, voltageSources, conductanceElements, frequency):
+def formNetlistMatrix(currentSources, voltageSources, conductanceElements, frequency, op_bool):
     nodes = []
     for source in currentSources:
         if not (source.in_node in nodes):
             nodes.append(source.in_node)
         if not (source.out_node in nodes):
             nodes.append(source.out_node)
-        source.update_current(frequency*2*np.pi)
+        if op_bool:
+            source.op_bool = True
+        source.update_current()
     for conductanceElement in conductanceElements:
         if not (conductanceElement.node_1 in nodes):
             nodes.append(conductanceElement.node_1)
@@ -259,7 +282,9 @@ def formNetlistMatrix(currentSources, voltageSources, conductanceElements, frequ
             nodes.append(voltageSource.plus_node)
         if not (voltageSource.minus_node in nodes):
             nodes.append(voltageSource.minus_node)
-        voltageSource.update_voltage(frequency*2*np.pi)
+        if op_bool:
+            voltageSource.op_bool = True
+        voltageSource.update_voltage()
 
     nodes.sort()
 
@@ -411,6 +436,7 @@ def solveMatrix(netlistMatrix, nodes, voltageSources):
     Solution = np.linalg.solve(A, Z) * 0.5
     for row in netlistMatrix:
         for component in row:
+            #consider remove
             if (component.label[0] == 'I') and (component.ac_bool == True):
                 node_1 = component.out_node
                 node_2 = component.in_node
