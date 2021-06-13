@@ -172,7 +172,6 @@ def parser(file):
             frequencies = frequency_generator(start_freq, stop_freq, points_per_dec)
             magnitudes = []
             for frequency in frequencies:
-                print('Start of iteration')
                 (nodes, netlistMatrix) = formNetlistMatrix(currentSources, voltageSources, conductanceElements, frequency, False)
                 magnitudes.append(solveMatrix(netlistMatrix, nodes, voltageSources))
                 for conductanceElement in conductanceElements:
@@ -183,7 +182,6 @@ def parser(file):
             df = pd.DataFrame(data = d)
             print(df)
             (nodes, netlistMatrix) = formNetlistMatrix(currentSources, voltageSources, conductanceElements, 12, False)
-            print(solveMatrix(netlistMatrix, nodes, voltageSources))
             sns.set_style("darkgrid")
             sns.set_context("paper")
             sns.lineplot(x='Frequency (Hz)', y='Gain (dB)', data=df)
@@ -296,8 +294,6 @@ def formNetlistMatrix(currentSources, voltageSources, conductanceElements, frequ
         #below we adjust the conductance element by frequency
         if((conductanceElement.label[0] == 'C') or (conductanceElement.label[0] == 'L')):
             conductanceElement.update_conductance(frequency*2*np.pi)
-            print(frequency*2*np.pi)
-            print(conductanceElement.conductance)
     for voltageSource in voltageSources:
         if not (voltageSource.plus_node in nodes):
             nodes.append(voltageSource.plus_node)
@@ -454,9 +450,6 @@ def solveMatrix(netlistMatrix, nodes, voltageSources):
     A = constructMatrixA(nodes, netlistMatrix, voltageSources)
     X = constructMatrixX(nodes, voltageSources)
     Z = constructMatrixZ(nodes, netlistMatrix, voltageSources)
-    print(A)
-    print(X)
-    print(Z)
     Solution = np.linalg.solve(A, Z) * 0.5
     node_1 = voltageSources[0].plus_node
     node_2 = voltageSources[0].minus_node
@@ -479,7 +472,7 @@ def solveMatrix(netlistMatrix, nodes, voltageSources):
     index2 = 0
     component = netlistMatrix[index1][index2]
     row = netlistMatrix[index1]
-    while component == 'V':
+    while(component.label[0] == 'V') or (component.label[0] == 'I'):
         if row == []:
             index1 = index1 + 1
             row = netlistMatrix[index1]
@@ -488,6 +481,7 @@ def solveMatrix(netlistMatrix, nodes, voltageSources):
             index2 = index2 + 1
             component = row[index2]
     output_node = component.node_1
+    print(output_node)
     for node in range(len(nodes) - 1):
         if(node + 1 == output_node):
             output_voltage = Solution[node]
