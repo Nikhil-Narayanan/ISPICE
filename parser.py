@@ -3,6 +3,7 @@ import random
 import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
+import time
 
 file = open("netlist.txt", "r")
 
@@ -237,7 +238,6 @@ def parser(file):
                 node_2 = line[2]
                 #assume initially that omega is 1, 2pif
                 conductance = 1j * multiplier(line[3])
-                print(conductance)
                 conductanceElements.append(Capacitor(label, conductance, node_1, node_2))
             elif designator == 'D':
                 anode = line[1]
@@ -489,4 +489,6 @@ def solveMatrix(netlistMatrix, nodes, voltageSources):
         print(X[element] + " = " + str(Solution[element]))
     return np.absolute(output_voltage/input_voltage)
 
+start_time = time.time()
 parser(file)
+print("--- %s seconds ---" % (time.time() - start_time))
