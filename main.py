@@ -16,7 +16,6 @@ class voltageSource:
         self.ac_bool = ac_bool
         self.op_bool = op_bool
     def update_voltage(self):
-        #think about whether this is necessary, pls
         if self.ac_bool:
             if self.op_bool:
                 self.voltage = 0
@@ -182,7 +181,7 @@ def parser(file):
             d = {'Frequency (Hz)': frequencies, 'Gain (dB)': magnitudes}
             df = pd.DataFrame(data = d)
             print(df)
-            (nodes, netlistMatrix) = formNetlistMatrix(currentSources, voltageSources, conductanceElements, 12, False)
+            print("--- %s seconds ---" % (time.time() - start_time))
             sns.set_style("darkgrid")
             sns.set_context("paper")
             sns.lineplot(x='Frequency (Hz)', y='Gain (dB)', data=df)
@@ -491,4 +490,3 @@ def solveMatrix(netlistMatrix, nodes, voltageSources):
 
 start_time = time.time()
 parser(file)
-print("--- %s seconds ---" % (time.time() - start_time))
