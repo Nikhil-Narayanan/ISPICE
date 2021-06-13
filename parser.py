@@ -68,6 +68,9 @@ class Inductor:
     def update_conductance(self, omega):
         self.conductance = self.conductance / omega
         return self.conductance
+    def reset_conductance(self, omega):
+        self.conductance = self.conductance / omega
+        return self.conductance
 
 class Capacitor:
     def __init__(self, label, conductance, node_1, node_2):
@@ -77,6 +80,9 @@ class Capacitor:
         self.node_2 = node_2
     def update_conductance(self, omega):
         self.conductance = self.conductance * omega
+        return self.conductance
+    def reset_conductance(self, omega):
+        self.conductance = self.conductance / omega
         return self.conductance
 
 #solve DC op point with ac = 0
@@ -166,8 +172,12 @@ def parser(file):
             frequencies = frequency_generator(start_freq, stop_freq, points_per_dec)
             magnitudes = []
             for frequency in frequencies:
+                print('Start of iteration')
                 (nodes, netlistMatrix) = formNetlistMatrix(currentSources, voltageSources, conductanceElements, frequency, False)
                 magnitudes.append(solveMatrix(netlistMatrix, nodes, voltageSources))
+                for conductanceElement in conductanceElements:
+                    if ((conductanceElement.label[0] == 'C') or (conductanceElement.label[0] == 'L')):
+                        conductanceElement.reset_conductance(2*np.pi*frequency)
             magnitudes = 20 * np.log10(magnitudes)
             d = {'Frequency (Hz)': frequencies, 'Gain (dB)': magnitudes}
             df = pd.DataFrame(data = d)
@@ -229,6 +239,7 @@ def parser(file):
                 node_2 = line[2]
                 #assume initially that omega is 1, 2pif
                 conductance = 1j * multiplier(line[3])
+                print(conductance)
                 conductanceElements.append(Capacitor(label, conductance, node_1, node_2))
             elif designator == 'D':
                 anode = line[1]
@@ -285,6 +296,8 @@ def formNetlistMatrix(currentSources, voltageSources, conductanceElements, frequ
         #below we adjust the conductance element by frequency
         if((conductanceElement.label[0] == 'C') or (conductanceElement.label[0] == 'L')):
             conductanceElement.update_conductance(frequency*2*np.pi)
+            print(frequency*2*np.pi)
+            print(conductanceElement.conductance)
     for voltageSource in voltageSources:
         if not (voltageSource.plus_node in nodes):
             nodes.append(voltageSource.plus_node)
@@ -368,7 +381,7 @@ def constructMatrixB(nodes, voltageSources):
 def constructMatrixC(nodes, voltageSources):
    B = constructMatrixB(nodes, voltageSources)
    C = B.transpose()
-   return C * 0.5
+   return C
 
 def constructMatrixD(voltageSources):
     D = [[0 for voltageSource in voltageSources] for voltageSource in voltageSources]
@@ -441,6 +454,9 @@ def solveMatrix(netlistMatrix, nodes, voltageSources):
     A = constructMatrixA(nodes, netlistMatrix, voltageSources)
     X = constructMatrixX(nodes, voltageSources)
     Z = constructMatrixZ(nodes, netlistMatrix, voltageSources)
+    print(A)
+    print(X)
+    print(Z)
     Solution = np.linalg.solve(A, Z) * 0.5
     node_1 = voltageSources[0].plus_node
     node_2 = voltageSources[0].minus_node
